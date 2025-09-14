@@ -10,6 +10,9 @@ RUN pip install uv
 # Copy the MCP server files
 COPY . .
 
+# Set a longer timeout for downloading large packages
+ENV UV_HTTP_TIMEOUT=300
+
 # Install packages directly to the system (no virtual environment)
 # Combining commands to reduce Docker layers
 RUN uv pip install --system -e . && \
