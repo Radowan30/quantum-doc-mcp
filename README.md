@@ -132,6 +132,8 @@ Before running the server, you need to set up the database with the pgvector ext
 
 3. Run the query to create the necessary tables and functions
 
+After getting supabase running, use 'npx supabase status -o env' to get the service key.
+
 ## Knowledge Graph Setup (Optional)
 
 To enable AI hallucination detection and repository analysis features, you need to set up Neo4j.
@@ -309,8 +311,16 @@ docker run --env-file .env -p 8051:8051 mcp/crawl4ai-rag
 
 ### Using Python
 
+As Direct HTTP Server:
+
 ```bash
 uv run src/crawl4ai_mcp.py
+```
+
+As ASGI Application (For normal user use port 8051, for admin use port 8052):
+
+```bash
+uvicorn src.crawl4ai_mcp:app --host 0.0.0.0 --port 8051
 ```
 
 The server will start and listen on the configured host and port.

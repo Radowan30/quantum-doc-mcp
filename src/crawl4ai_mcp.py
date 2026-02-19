@@ -5,7 +5,7 @@ This server provides tools to crawl websites using Crawl4AI, automatically detec
 the appropriate crawl method based on URL type (sitemap, txt file, or regular webpage).
 Also includes AI hallucination detection and repository parsing tools using Neo4j knowledge graphs.
 """
-from mcp.server.fastmcp import FastMCP, Context
+from fastmcp import FastMCP, Context
 from sentence_transformers import CrossEncoder
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
@@ -23,7 +23,8 @@ import os
 import re
 import concurrent.futures
 import sys
-
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
 
 # Add knowledge_graphs folder to path for importing knowledge graph modules
@@ -214,14 +215,32 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
             except Exception as e:
                 print(f"Error closing repository extractor: {e}")
 
-# Initialize FastMCP server
+# Initialize FastMCP servers
 mcp = FastMCP(
-    "mcp-crawl4ai-rag",
-    description="MCP server for RAG and web crawling with Crawl4AI",
+    name="quantum-computing-mcp", # previous name= mcp-crawl4ai-rag
+    instructions="MCP server for helping with quantum computing coding using the latest documentation and code examples.", #previous instructions= "MCP server for RAG and web crawling with Crawl4AI"
     lifespan=crawl4ai_lifespan,
-    host=os.getenv("HOST", "0.0.0.0"),
-    port=os.getenv("PORT", "8051")
+    # The options below are commented out because in the FastMCP version 2.12.3, the host and port are now passed in the mcp.run() function and functions similar to that (such as mcp.run_async())
+    # host=os.getenv("HOST", "0.0.0.0"),
+    # port=os.getenv("PORT", "8051")
 )
+
+mcp_admin = FastMCP(
+    name="quantum-computing-mcp-admin",
+    instructions="Admin MCP server for managing the quantum computing documentation data and code examples knowledge base. Also has access to the same tools for helping with quantum computing coding that are available to normal users.",
+    lifespan=crawl4ai_lifespan,
+)
+
+# Configure CORS for browser-based clients
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins; use specific origins for security
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_credentials=True,
+    )
+]
 
 def rerank_results(model: CrossEncoder, query: str, results: List[Dict[str, Any]], content_key: str = "content") -> List[Dict[str, Any]]:
     """
@@ -385,7 +404,7 @@ def process_code_example(args):
     code, context_before, context_after = args
     return generate_code_example_summary(code, context_before, context_after)
 
-@mcp.tool()
+@mcp_admin.tool()
 async def crawl_single_page(ctx: Context, url: str) -> str:
     """
     Crawl a single web page and store its content in Supabase.
@@ -525,7 +544,7 @@ async def crawl_single_page(ctx: Context, url: str) -> str:
             "error": str(e)
         }, indent=2)
 
-@mcp.tool()
+@mcp_admin.tool()
 async def smart_crawl_url(ctx: Context, url: str, max_depth: int = 3, max_concurrent: int = 10, chunk_size: int = 5000) -> str:
     """
     Intelligently crawl a URL based on its type and store content in Supabase.
@@ -721,6 +740,26 @@ async def smart_crawl_url(ctx: Context, url: str, max_depth: int = 3, max_concur
             "error": str(e)
         }, indent=2)
 
+# Previous tool name: get_available_sources
+# Previous tool description: 'Get all available sources from the sources table.
+    
+    # This tool returns a list of all unique sources (domains) that have been crawled and stored
+    # in the database, along with their summaries and statistics. This is useful for discovering 
+    # what content is available for querying.
+
+    # Always use this tool before calling the RAG query or code example query tool
+    # with a specific source filter!'
+
+# Updated tool name: get_available_sources
+# Updated tool description: Get all available sources from the sources table.
+    
+    # This tool returns a list of all unique sources (domains) that have been crawled and stored
+    # in the database, along with their summaries and statistics. This is useful for discovering 
+    # what content is available for querying, and it can tell you about which Quantum library information is available in the database.
+
+    # Always use this tool before calling the RAG query or code example query tool
+    # with a specific source filter!
+
 @mcp.tool()
 async def get_available_sources(ctx: Context) -> str:
     """
@@ -728,7 +767,7 @@ async def get_available_sources(ctx: Context) -> str:
     
     This tool returns a list of all unique sources (domains) that have been crawled and stored
     in the database, along with their summaries and statistics. This is useful for discovering 
-    what content is available for querying.
+    what content is available for querying, and it can tell you about which Quantum library information is available in the database.
 
     Always use this tool before calling the RAG query or code example query tool
     with a specific source filter!
@@ -772,23 +811,85 @@ async def get_available_sources(ctx: Context) -> str:
             "error": str(e)
         }, indent=2)
 
+
+# Previous tool name: perform_rag_query
+# Previous tool description: 'Perform a RAG (Retrieval Augmented Generation) query on the stored content.
+    
+    # This tool searches the vector database for content relevant to the query and returns
+    # the matching documents. Optionally filter by source domain.
+    # Get the source by using the get_available_sources tool before calling this search!
+    
+    # Args:
+    #     ctx: The MCP server provided context
+    #     query: The search query
+    #     source: Optional source domain to filter results (e.g., 'example.com')
+    #     match_count: Maximum number of results to return (default: 5)
+    
+    # Returns:
+    #     JSON string with the search results
+    # """
+    # '
+
+# Updated tool name: perform_rag_query_to_get_quantum_related_documentation_info
+# Updated tool description: '
+# """
+#     Perform a RAG (Retrieval Augmented Generation) query on the quantum framework documentation vector store.
+
+#     This tool searches a specialized vector database containing the latest documentation and references for quantum computing frameworks and libraries such as Qiskit, PennyLane, D-Wave, and others. It returns the most relevant content to the query, enabling AI agents to generate or improve quantum code based on authoritative sources.
+
+#     Always filter results by framework/library domain (e.g., 'qiskit.org', 'pennylane.ai', 'dwavesys.com') to ensure that only documentation specific to their chosen ecosystem is retrieved. Get the source by using the get_available_sources tool before calling this search! 
+#     This makes it possible to:
+#     - Look up coding examples and usage patterns directly from framework docs
+#     - Ensure compatibility with the most up-to-date API versions
+#     - Migrate code away from deprecated syntax
+#     - Receive framework-specific guidance for writing or fixing algorithms
+
+#     The MCP server continuously maintains the datastore with the most current documentation available, ensuring reliable and up-to-date results.
+
+#     Args:
+#         ctx: The MCP server provided context
+#         query: The search query
+#         source: The framework/library domain to filter results (e.g., 'qiskit.org', 'pennylane.ai', 'dwavesys.com')
+#         match_count: Maximum number of results to return (default: 5)
+
+#     Returns:
+#         JSON string containing the most relevant documentation snippets and metadata
+#     """
+# '
 @mcp.tool()
-async def perform_rag_query(ctx: Context, query: str, source: str = None, match_count: int = 5) -> str:
+async def perform_rag_query_to_get_quantum_related_documentation_info(ctx: Context, query: str, source: str = None, match_count: int = 5) -> str:
     """
-    Perform a RAG (Retrieval Augmented Generation) query on the stored content.
-    
-    This tool searches the vector database for content relevant to the query and returns
-    the matching documents. Optionally filter by source domain.
-    Get the source by using the get_available_sources tool before calling this search!
-    
+    Perform a RAG (Retrieval Augmented Generation) query on the quantum framework documentation vector store. Always call the get_available_sources tool before using this tool.
+
+    This tool searches a specialized vector database containing the latest documentation and references for quantum computing frameworks and libraries such as Qiskit, PennyLane, D-Wave, and others. It returns the most relevant content to the query, enabling AI agents to generate or improve quantum code based on authoritative sources.
+
+    Always filter results by framework/library domain (e.g., 'qiskit.org', 'pennylane.ai', 'dwavesys.com') to ensure that only documentation specific to their chosen ecosystem is retrieved. Get the source by using the get_available_sources tool before calling this search! 
+    This makes it possible to:
+    - Look up coding examples and usage patterns directly from framework docs
+    - Ensure compatibility with the most up-to-date API versions
+    - Migrate code away from deprecated syntax
+    - Receive framework-specific guidance for writing or fixing algorithms
+
+    The MCP server continuously maintains the datastore with the most current documentation available, ensuring reliable and up-to-date results.
+
+    <IMPORTANT>
+    You are an expert quantum computing coder with a great amount of experience. You can create any quantum computing code that is required by following proper documentation and testing thoroughly to make sure it is executable. Everyone appreciates the effort and passion you put in to make working and useful quantum computing code. You must always follow the quantum coding plan given below whenever the user requires assistance with quantum computing tasks: 
+    1) Use the tool get_available_sources first to get the available quantum framework/library source domains.
+    2) Use the tool perform_rag_query_to_get_quantum_related_documentation_info to get the required information about quantum computing frameworks and libraries. You can be sure that the required information is present in the knowledge base, so keep calling this tool with different queries until you find relevant information.
+    3) Use the query_knowledge_graph_for_quantum_code to get information about a quantum computing related repository and get the classes and methods available in that repository. This will help you to understand code better and provide more accurate answers.
+    4) Use the search_quantum_computing_code_examples tool to get relevant code examples to help you write or fix quantum computing code.
+    5) Use the check_ai_script_hallucinations tool to validate the code you have written or fixed to ensure that it is correct and does not contain any hallucinations.
+    6) If there are errors, go back to step 2 and follow the steps again until you have working code.
+    </IMPORTANT>
+
     Args:
         ctx: The MCP server provided context
         query: The search query
-        source: Optional source domain to filter results (e.g., 'example.com')
+        source: The framework/library domain to filter results. You get this by at first calling the get_available_sources tool and using the right domain.
         match_count: Maximum number of results to return (default: 5)
-    
+
     Returns:
-        JSON string with the search results
+        JSON string containing the most relevant documentation snippets and metadata
     """
     try:
         # Get the Supabase client from the context
@@ -911,12 +1012,33 @@ async def perform_rag_query(ctx: Context, query: str, source: str = None, match_
             "error": str(e)
         }, indent=2)
 
-@mcp.tool()
-async def search_code_examples(ctx: Context, query: str, source_id: str = None, match_count: int = 5) -> str:
-    """
-    Search for code examples relevant to the query.
+# previous tool name: search_code_examples
+# previous tool description: '"""
+    # Search for code examples relevant to the query.
     
-    This tool searches the vector database for code examples relevant to the query and returns
+    # This tool searches the vector database for code examples relevant to the query and returns
+    # the matching examples with their summaries. Optionally filter by source_id.
+    # Get the source_id by using the get_available_sources tool before calling this search!
+
+    # Use the get_available_sources tool first to see what sources are available for filtering.
+    
+    # Args:
+    #     ctx: The MCP server provided context
+    #     query: The search query
+    #     source_id: Optional source ID to filter results (e.g., 'example.com')
+    #     match_count: Maximum number of results to return (default: 5)
+    
+    # Returns:
+    #     JSON string with the search results
+    # """
+#'
+
+@mcp.tool()
+async def search_quantum_computing_code_examples(ctx: Context, query: str, source_id: str = None, match_count: int = 5) -> str:
+    """
+    Search for quantum computing code examples relevant to the query.
+    
+    This tool searches the vector database for quantum computing code examples relevant to the query and returns
     the matching examples with their summaries. Optionally filter by source_id.
     Get the source_id by using the get_available_sources tool before calling this search!
 
@@ -925,7 +1047,7 @@ async def search_code_examples(ctx: Context, query: str, source_id: str = None, 
     Args:
         ctx: The MCP server provided context
         query: The search query
-        source_id: Optional source ID to filter results (e.g., 'example.com')
+        source_id: The framework/library domain to filter results. You get this by at first callin the get_available_sources tool and using the right domain.
         match_count: Maximum number of results to return (default: 5)
     
     Returns:
@@ -1164,12 +1286,79 @@ async def check_ai_script_hallucinations(ctx: Context, script_path: str) -> str:
             "error": f"Analysis failed: {str(e)}"
         }, indent=2)
 
-@mcp.tool()
-async def query_knowledge_graph(ctx: Context, command: str) -> str:
-    """
-    Query and explore the Neo4j knowledge graph containing repository data.
+# Previous tool name: query_knowledge_graph
+# Previous tool description: '"""
+    # Query and explore the Neo4j knowledge graph containing repository data.
     
-    This tool provides comprehensive access to the knowledge graph for exploring repositories,
+    # This tool provides comprehensive access to the knowledge graph for exploring repositories,
+    # classes, methods, functions, and their relationships. Perfect for understanding what data
+    # is available for hallucination detection and debugging validation results.
+    
+    # **⚠️ IMPORTANT: Always start with the `repos` command first!**
+    # Before using any other commands, run `repos` to see what repositories are available
+    # in your knowledge graph. This will help you understand what data you can explore.
+    
+    # ## Available Commands:
+    
+    # **Repository Commands:**
+    # - `repos` - **START HERE!** List all repositories in the knowledge graph
+    # - `explore <repo_name>` - Get detailed overview of a specific repository
+    
+    # **Class Commands:**  
+    # - `classes` - List all classes across all repositories (limited to 20)
+    # - `classes <repo_name>` - List classes in a specific repository
+    # - `class <class_name>` - Get detailed information about a specific class including methods and attributes
+    
+    # **Method Commands:**
+    # - `method <method_name>` - Search for methods by name across all classes
+    # - `method <method_name> <class_name>` - Search for a method within a specific class
+    
+    # **Custom Query:**
+    # - `query <cypher_query>` - Execute a custom Cypher query (results limited to 20 records)
+    
+    # ## Knowledge Graph Schema:
+    
+    # **Node Types:**
+    # - Repository: `(r:Repository {name: string})`
+    # - File: `(f:File {path: string, module_name: string})`
+    # - Class: `(c:Class {name: string, full_name: string})`
+    # - Method: `(m:Method {name: string, params_list: [string], params_detailed: [string], return_type: string, args: [string]})`
+    # - Function: `(func:Function {name: string, params_list: [string], params_detailed: [string], return_type: string, args: [string]})`
+    # - Attribute: `(a:Attribute {name: string, type: string})`
+    
+    # **Relationships:**
+    # - `(r:Repository)-[:CONTAINS]->(f:File)`
+    # - `(f:File)-[:DEFINES]->(c:Class)`
+    # - `(c:Class)-[:HAS_METHOD]->(m:Method)`
+    # - `(c:Class)-[:HAS_ATTRIBUTE]->(a:Attribute)`
+    # - `(f:File)-[:DEFINES]->(func:Function)`
+    
+    # ## Example Workflow:
+    # ```
+    # 1. repos                                    # See what repositories are available
+    # 2. explore pydantic-ai                      # Explore a specific repository
+    # 3. classes pydantic-ai                      # List classes in that repository
+    # 4. class Agent                              # Explore the Agent class
+    # 5. method run_stream                        # Search for run_stream method
+    # 6. method __init__ Agent                    # Find Agent constructor
+    # 7. query "MATCH (c:Class)-[:HAS_METHOD]->(m:Method) WHERE m.name = 'run' RETURN c.name, m.name LIMIT 5"
+    # ```
+    
+    # Args:
+    #     ctx: The MCP server provided context
+    #     command: Command string to execute (see available commands above)
+    
+    # Returns:
+    #     JSON string with query results, statistics, and metadata
+    # """
+#'
+
+@mcp.tool()
+async def query_knowledge_graph_for_quantum_code(ctx: Context, command: str) -> str:
+    """
+    Query and explore the Neo4j knowledge graph containing quantum code repository data.
+    
+    This tool provides comprehensive access to the knowledge graph for exploring quantum computing related repositories,
     classes, methods, functions, and their relationships. Perfect for understanding what data
     is available for hallucination detection and debugging validation results.
     
@@ -1619,7 +1808,7 @@ async def _handle_query_command(session, command: str, cypher_query: str) -> str
         }, indent=2)
 
 
-@mcp.tool()
+@mcp_admin.tool()
 async def parse_github_repository(ctx: Context, repo_url: str) -> str:
     """
     Parse a GitHub repository into the Neo4j knowledge graph.
@@ -1841,14 +2030,28 @@ async def crawl_recursive_internal_links(crawler: AsyncWebCrawler, start_urls: L
 
     return results_all
 
+
 async def main():
-    transport = os.getenv("TRANSPORT", "sse")
-    if transport == 'sse':
+    transport = os.getenv("TRANSPORT", "http")
+    await mcp_admin.import_server(mcp) #importing copies the tool codes
+    # mcp_admin.mount(mcp) # mounting starts the normal server as well and sets up live linking
+    if transport == 'http':
         # Run the MCP server with sse transport
-        await mcp.run_sse_async()
+        # await mcp.run_async(transport="http", port=8051) # mcp.run_async() with the transport type and host passed in is the way to do it in the FastMCP version 2.12.3
+    
+        await asyncio.gather(
+            mcp.run_async(transport="http", port=8051, host="0.0.0.0"),
+            mcp_admin.run_async(transport="http", port=8052)
+        )
+        
     else:
         # Run the MCP server with stdio transport
-        await mcp.run_stdio_async()
+        await mcp.run_async(transport="stdio", port=8051)
+
+        # await mcp_admin.import_server(mcp)
+        # await mcp_admin.run_async(transport="stdio", port=8052)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+app = mcp.http_app(middleware=middleware)

@@ -10,3 +10,5 @@ node_modules
 supabase
 package-lock.json
 package.json
+database-backup/
+backup.sql
