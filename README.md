@@ -1,16 +1,12 @@
-<h1 align="center">Crawl4AI RAG MCP Server</h1>
+<h1 align="center">Quantum Doc MCP Server</h1>
 
 <p align="center">
-  <em>Web Crawling and RAG Capabilities for AI Agents and AI Coding Assistants</em>
+  <em>Web Crawling and RAG Capabilities for AI Agents and AI Coding Assistants specifc for Quantum Computing</em>
 </p>
 
 A powerful implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) integrated with [Crawl4AI](https://crawl4ai.com) and [Supabase](https://supabase.com/) for providing AI agents and AI coding assistants with advanced web crawling and RAG capabilities.
 
 With this MCP server, you can <b>scrape anything</b> and then <b>use that knowledge anywhere</b> for RAG.
-
-The primary goal is to bring this MCP server into [Archon](https://github.com/coleam00/Archon) as I evolve it to be more of a knowledge engine for AI coding assistants to build AI agents. This first version of the Crawl4AI/RAG MCP server will be improved upon greatly soon, especially making it more configurable so you can use different embedding models and run everything locally with Ollama.
-
-Consider this GitHub repository a testbed, hence why I haven't been super actively address issues and pull requests yet. I certainly will though as I bring this into Archon V2!
 
 ## Overview
 
@@ -24,20 +20,6 @@ The server includes several advanced RAG strategies that can be enabled to enhan
 - **Knowledge Graph** for AI hallucination detection and repository code analysis
 
 See the [Configuration section](#configuration) below for details on how to enable and configure these strategies.
-
-## Vision
-
-The Crawl4AI RAG MCP server is just the beginning. Here's where we're headed:
-
-1. **Integration with Archon**: Building this system directly into [Archon](https://github.com/coleam00/Archon) to create a comprehensive knowledge engine for AI coding assistants to build better AI agents.
-
-2. **Multiple Embedding Models**: Expanding beyond OpenAI to support a variety of embedding models, including the ability to run everything locally with Ollama for complete control and privacy.
-
-3. **Advanced RAG Strategies**: Implementing sophisticated retrieval techniques like contextual retrieval, late chunking, and others to move beyond basic "naive lookups" and significantly enhance the power and precision of the RAG system, especially as it integrates with Archon.
-
-4. **Enhanced Chunking Strategy**: Implementing a Context 7-inspired chunking approach that focuses on examples and creates distinct, semantically meaningful sections for each chunk, improving retrieval precision.
-
-5. **Performance Optimization**: Increasing crawling and indexing speed to make it more realistic to "quickly" index new documentation to then leverage it within the same prompt in an AI coding assistant.
 
 ## Features
 
@@ -57,11 +39,11 @@ The server provides essential web crawling and search tools:
 1. **`crawl_single_page`**: Quickly crawl a single web page and store its content in the vector database
 2. **`smart_crawl_url`**: Intelligently crawl a full website based on the type of URL provided (sitemap, llms-full.txt, or a regular webpage that needs to be crawled recursively)
 3. **`get_available_sources`**: Get a list of all available sources (domains) in the database
-4. **`perform_rag_query`**: Search for relevant content using semantic search with optional source filtering
+4. **`perform_rag_query_to_get_quantum_related_documentation_info`**: Search for relevant content using semantic search with optional source filtering
 
 ### Conditional Tools
 
-5. **`search_code_examples`** (requires `USE_AGENTIC_RAG=true`): Search specifically for code examples and their summaries from crawled documentation. This tool provides targeted code snippet retrieval for AI coding assistants.
+5. **`search_quantum_computing_code_examples`** (requires `USE_AGENTIC_RAG=true`): Search specifically for code examples and their summaries from crawled documentation. This tool provides targeted code snippet retrieval for AI coding assistants.
 
 ### Knowledge Graph Tools (requires `USE_KNOWLEDGE_GRAPH=true`, see below)
 
@@ -176,6 +158,15 @@ Alternatively, install Neo4j directly:
    - URI: `bolt://localhost:7687` (default)
    - Username: `neo4j` (default)
    - Password: Whatever you set during creation
+
+4. **To interact with neo4j in windows/linux**
+   - Set the installation directory as a system env variable called 'NEO4J_HOME'
+   - Start the server:
+     - For Winwdows run this command while in the installation directory: bin\neo4j-admin server console (since the installation directory has been set in system env variables, you can use the following command from any directiry - %NEO4J_HOME%\bin\neo4j console)
+     - For Linux/Mac, use while in the installation directory: ./bin/neo4j-admin server console
+   - In a browser, open http://localhost:7474/
+   - Shutdown the server by typing Ctrl-C in the console.’
+
 
 ## Configuration
 
